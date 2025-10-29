@@ -22,7 +22,6 @@
 ---
 
 ## 📂 폴더 구조 (Project Structure)
-
 <pre><code>
 GPR_Cavity_Segmentation/
 ├── data/
