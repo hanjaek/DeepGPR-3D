@@ -1,12 +1,9 @@
 # (권장) 가상환경 + 의존성 설치를 먼저 했다면---------------------------------
 
-python detect.py \
-  --weights "../2) 학습모델 파일/YZ/best.pt" \
-  --source "../내_이미지_폴더/" \
-  --imgsz 640 \
-  --conf-thres 0.4 \
-  --device 0 \
-  --save-txt --save-conf
+1
+ai_hub/src/yolov5_master
+2
+python detect.py --weights "../../model/yz_weights/best.pt" --source "../../../data/cavity/" --imgsz 640 --conf-thres 0.4 --device cpu --save-txt --save-conf    
 
 폴더 안에 GPR 단면 이미지 파일(.jpg, .png, .jpeg, .bmp 등) 만 넣어두면 됨.
 파일 이름은 아무 이름이나 상관 X
