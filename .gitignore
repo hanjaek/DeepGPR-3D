@@ -55,3 +55,6 @@ outputs/predictions/
 
 # ========== Misc ==========
 __MACOSX/
+
+# ==========================
+ai_hub/
