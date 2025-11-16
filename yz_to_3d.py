@@ -15,17 +15,20 @@ MAX_DEPTH_M    = 5.0    # 한 이미지의 최대 깊이 (Z축) ≒ 5 m 가정
 # ===========================
 # 2) 경로 설정
 # ===========================
-IMG_DIR   = r"C:\Users\hjk25\gpr_to_cavity\test_data"
-LABEL_DIR = r"C:\Users\hjk25\gpr_to_cavity\ai_hub\src\yolov5_master\runs\detect\exp\labels"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+IMG_DIR   = os.path.join(BASE_DIR, "test_data")
+LABEL_DIR = os.path.join(BASE_DIR, "ai_hub/src/yolov5_master/runs/detect/exp2/labels")
+OUTPUT_DIR = os.path.join(BASE_DIR, "outputs")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ===========================
-# 3) 001번 site만 선택
+# 3) 017번 site만 선택
 # ===========================
-# 001_1.jpg, 001_2.jpg, ... 형태만 읽기
-image_paths = sorted(glob.glob(os.path.join(IMG_DIR, "001_*.jpg")))
+# 017_1.jpg, 017_2.jpg, ... 형태만 읽기
+image_paths = sorted(glob.glob(os.path.join(IMG_DIR, "017_*.jpg")))
 
 if not image_paths:
-    raise RuntimeError(f"001_* 이미지를 찾을 수 없습니다: {IMG_DIR}")
+    raise RuntimeError(f"017_* 이미지를 찾을 수 없습니다: {IMG_DIR}")
 
 print("사용할 이미지:")
 for p in image_paths:
@@ -100,7 +103,7 @@ point_labels = np.array(point_labels)
 
 print("총 포인트 수:", len(points))
 if len(points) == 0:
-    raise RuntimeError("포인트가 0개입니다. 001_*.txt에 탐지 결과가 있는지 확인하세요.")
+    raise RuntimeError("포인트가 0개입니다. 017_*.txt에 탐지 결과가 있는지 확인하세요.")
 
 # ===========================
 # 4) 3D 시각화
@@ -114,10 +117,14 @@ colors = np.where(point_labels == 0, 'red', 'blue')
 ax.scatter(points[:, 0], points[:, 1], points[:, 2],
            s=20, c=colors, alpha=0.8)
 
-ax.set_xlabel("X (m) - 슬라이스 방향 (001_1, 001_2, ...)")
+ax.set_xlabel("X (m) - 슬라이스 방향 (017_1, 017_2, ...)")
 ax.set_ylabel("Y (m) - 진행 방향 (~10 m)")
 ax.set_zlabel("Z (m) - 깊이 (~5 m)")
-ax.set_title("Site 001 GPR YOLO 3D 포인트 클라우드")
+ax.set_title("Site 017 GPR YOLO 3D 포인트 클라우드")
+
+output_path = os.path.join(OUTPUT_DIR, "3d_vis_017.png")
+plt.savefig(output_path, dpi=300)
+print(f"3D 시각화 이미지 저장 완료: {output_path}")
 
 plt.tight_layout()
 plt.show()
