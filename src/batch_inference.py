@@ -75,7 +75,7 @@ def main():
             prob = torch.sigmoid(logits)[0, 0].cpu().numpy()
 
         # threshold = 0.5
-        mask_np = (prob > 0.5).astype(np.uint8) * 255
+        mask_np = (prob > 0.3).astype(np.uint8) * 255
         save_mask(mask_np, save_path)
 
     print("[INFO] Batch inference finished.")
