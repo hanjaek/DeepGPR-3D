@@ -1,93 +1,111 @@
+# ==================================================
+# Lightweight UNet for Cavity Segmentation
+# ==================================================
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-# ---------------- Double Convolution Block ----------------
+# ==================================================
+# Double Conv Block
+# ==================================================
 class DoubleConv(nn.Module):
-    def __init__(self, in_c, out_c):
+    def __init__(self, in_ch, out_ch):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(in_c, out_c, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_c),
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_c, out_c, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_c),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
         )
 
     def forward(self, x):
         return self.net(x)
 
-# ---------------- U-Net Architecture ----------------
+
+# ==================================================
+# Downsampling Block
+# ==================================================
+class Down(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.pool = nn.MaxPool2d(2)
+        self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x):
+        return self.conv(self.pool(x))
+
+
+# ==================================================
+# Upsampling Block
+# ==================================================
+class Up(nn.Module):
+    def __init__(self, in_ch, out_ch, bilinear=True):
+        super().__init__()
+        if bilinear:
+            self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+            self.conv = DoubleConv(in_ch, out_ch)
+        else:
+            self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
+            self.conv = DoubleConv(in_ch, out_ch)
+
+    def forward(self, x1, x2):
+        x1 = self.up(x1)
+
+        # 크기 보정 (패딩)
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+        x1 = F.pad(x1, [diffX//2, diffX-diffX//2, diffY//2, diffY-diffY//2])
+
+        x = torch.cat([x2, x1], dim=1)
+        return self.conv(x)
+
+
+# ==================================================
+# Final Output Convolution
+# ==================================================
+class OutConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.conv = nn.Conv2d(in_ch, out_ch, 1)
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+# ==================================================
+# UNet 전체 구조
+# ==================================================
 class UNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=1):
+    def __init__(self, n_channels=1, n_classes=1, bilinear=True):
         super().__init__()
 
         # ---------------- Encoder ----------------
-        self.down1 = DoubleConv(in_channels, 64)
-        self.pool1 = nn.MaxPool2d(2)
-
-        self.down2 = DoubleConv(64, 128)
-        self.pool2 = nn.MaxPool2d(2)
-
-        self.down3 = DoubleConv(128, 256)
-        self.pool3 = nn.MaxPool2d(2)
-
-        self.down4 = DoubleConv(256, 512)
-        self.pool4 = nn.MaxPool2d(2)
-
-        # ---------------- Bottleneck ----------------
-        self.bottleneck = DoubleConv(512, 1024)
+        self.inc = DoubleConv(n_channels, 16)
+        self.down1 = Down(16, 32)
+        self.down2 = Down(32, 64)
+        self.down3 = Down(64, 128)
+        self.down4 = Down(128, 128)
 
         # ---------------- Decoder ----------------
-        self.up4 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2)
-        self.dec4 = DoubleConv(1024, 512)
+        self.up1 = Up(256, 64, bilinear)
+        self.up2 = Up(128, 32, bilinear)
+        self.up3 = Up(64, 16, bilinear)
+        self.up4 = Up(32, 16, bilinear)
 
-        self.up3 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2)
-        self.dec3 = DoubleConv(512, 256)
-
-        self.up2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2)
-        self.dec2 = DoubleConv(256, 128)
-
-        self.up1 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2)
-        self.dec1 = DoubleConv(128, 64)
-
-        # ---------------- Output Layer ----------------
-        self.out_conv = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.outc = OutConv(16, n_classes)
 
     def forward(self, x):
-        # ---------------- Encoder ----------------
-        d1 = self.down1(x)
-        p1 = self.pool1(d1)
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
 
-        d2 = self.down2(p1)
-        p2 = self.pool2(d2)
-
-        d3 = self.down3(p2)
-        p3 = self.pool3(d3)
-
-        d4 = self.down4(p3)
-        p4 = self.pool4(d4)
-
-        # ---------------- Bottleneck ----------------
-        bn = self.bottleneck(p4)
-
-        # ---------------- Decoder ----------------
-        u4 = self.up4(bn)
-        u4 = torch.cat([u4, d4], dim=1)
-        u4 = self.dec4(u4)
-
-        u3 = self.up3(u4)
-        u3 = torch.cat([u3, d3], dim=1)
-        u3 = self.dec3(u3)
-
-        u2 = self.up2(u3)
-        u2 = torch.cat([u2, d2], dim=1)
-        u2 = self.dec2(u2)
-
-        u1 = self.up1(u2)
-        u1 = torch.cat([u1, d1], dim=1)
-        u1 = self.dec1(u1)
-
-        # ---------------- Output ----------------
-        out = self.out_conv(u1)  # (B,1,H,W)
-        return out
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        return self.outc(x)

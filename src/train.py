@@ -1,71 +1,107 @@
+# ==================================================
+# Train UNet for Cavity Segmentation
+# ==================================================
+
 import os
 import torch
+from torch.utils.data import DataLoader, random_split
 import torch.nn as nn
-from torch.utils.data import DataLoader
+import torch.optim as optim
 
-from dataset import GPRCavityDataset
-from model import UNet
+from dataset_gpr import GPRCavityDataset
+from model_unet import UNet
 
-# ---------------- Dice Loss Function ----------------
-def dice_loss(pred, target, eps=1e-6):
-    pred = torch.sigmoid(pred)
-    num = 2.0 * (pred * target).sum(dim=(1, 2, 3))
-    den = (pred + target).sum(dim=(1, 2, 3)) + eps
-    dice = 1.0 - (num / den)
-    return dice.mean()
 
-# ---------------- One Training Step ----------------
-def train_step(model, loader, optimizer, bce_loss_fn, device):
-    model.train()
-    total_loss = 0.0
-
-    for images, masks in loader:
-        images = images.to(device)
-        masks = masks.to(device)
-
-        preds = model(images)              # (B,1,H,W) logits
-        bce = bce_loss_fn(preds, masks)    # BCEWithLogitsLoss
-        dsc = dice_loss(preds, masks)      # Dice loss
-        loss = bce + dsc
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        total_loss += loss.item()
-
-    return total_loss / len(loader)
-
-# ---------------- Main Training Loop ----------------
+# ==================================================
+# Main Training Loop
+# ==================================================
 def main():
-    # 이 경로만 바뀜: 이제 cavity 전체를 root로 사용
-    data_root = "./data/cavity"
+    # --------------------------------------------------
+    # 경로 설정 (src 기준)
+    # --------------------------------------------------
+    img_root = "../data/cavity"
+    mask_root = "../data_mask/cavity"
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"✅ Using device: {device}")
+    batch_size = 4
+    lr = 1e-3
+    num_epochs = 30
 
-    # ---------------- Dataset & DataLoader ----------------
-    dataset = GPRCavityDataset(root_dir=data_root, transform=None)
-    loader = DataLoader(dataset, batch_size=2, shuffle=True)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("[INFO] Device:", device)
 
-    # ---------------- Model & Optimizer ----------------
-    model = UNet(in_channels=3, out_channels=1).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    bce_loss_fn = nn.BCEWithLogitsLoss()
+    # --------------------------------------------------
+    # Dataset & Loader
+    # --------------------------------------------------
+    dataset = GPRCavityDataset(img_root, mask_root)
 
-    # ---------------- Training ----------------
-    epochs = 50
-    os.makedirs("./outputs/checkpoints", exist_ok=True)
+    n_total = len(dataset)
+    n_val = max(1, int(n_total * 0.2))
+    n_train = n_total - n_val
 
-    for epoch in range(epochs):
-        avg_loss = train_step(model, loader, optimizer, bce_loss_fn, device)
-        print(f"[Epoch {epoch+1}/{epochs}] Loss: {avg_loss:.4f}")
+    train_set, val_set = random_split(dataset, [n_train, n_val])
 
-        # epoch별 가중치 저장
-        ckpt_path = f"./outputs/checkpoints/epoch_{epoch+1}.pth"
-        torch.save(model.state_dict(), ckpt_path)
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=1, shuffle=False)
 
-    print("🎉 Training Complete!")
+    # --------------------------------------------------
+    # 모델 / 손실함수 / Optimizer
+    # --------------------------------------------------
+    model = UNet(n_channels=1, n_classes=1).to(device)
+    criterion = nn.BCEWithLogitsLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    best_val_loss = 9999.0
+
+    # --------------------------------------------------
+    # Training Loop
+    # --------------------------------------------------
+    for epoch in range(1, num_epochs + 1):
+        # ============================
+        # Train Step
+        # ============================
+        model.train()
+        train_loss_sum = 0
+
+        for imgs, masks in train_loader:
+            imgs, masks = imgs.to(device), masks.to(device)
+
+            optimizer.zero_grad()
+            logits = model(imgs)
+            loss = criterion(logits, masks)
+            loss.backward()
+            optimizer.step()
+
+            train_loss_sum += loss.item() * imgs.size(0)
+
+        train_loss = train_loss_sum / n_train
+
+        # ============================
+        # Validation Step
+        # ============================
+        model.eval()
+        val_loss_sum = 0
+
+        with torch.no_grad():
+            for imgs, masks in val_loader:
+                imgs, masks = imgs.to(device), masks.to(device)
+                logits = model(imgs)
+                loss = criterion(logits, masks)
+                val_loss_sum += loss.item() * imgs.size(0)
+
+        val_loss = val_loss_sum / n_val
+
+        print(f"[Epoch {epoch:03d}] Train={train_loss:.4f}  Val={val_loss:.4f}")
+
+        # ============================
+        # Best Model Save
+        # ============================
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            os.makedirs("../checkpoints", exist_ok=True)
+            save_path = "../checkpoints/unet_best.pth"
+            torch.save(model.state_dict(), save_path)
+            print(f"   -> Best model saved: {save_path}")
+
 
 if __name__ == "__main__":
     main()
