@@ -16,6 +16,29 @@ import torch.optim as optim
 from dataset import GPRCavityDataset
 from model import UNet
 
+# ============================
+# Segmentation Metrics
+# ============================
+def compute_metrics(logits, masks, threshold: float = 0.5):
+    """
+    logits, masks: (B,1,H,W) tensor
+    return: (dice, iou, pixel_acc)
+    """
+    probs = torch.sigmoid(logits)
+    preds = (probs > threshold).float()
+
+    preds_flat = preds.view(preds.size(0), -1)
+    masks_flat = masks.view(masks.size(0), -1)
+
+    intersection = (preds_flat * masks_flat).sum(dim=1)
+    union = preds_flat.sum(dim=1) + masks_flat.sum(dim=1) - intersection
+
+    eps = 1e-7
+    dice = (2 * intersection + eps) / (preds_flat.sum(dim=1) + masks_flat.sum(dim=1) + eps)
+    iou = (intersection + eps) / (union + eps)
+    acc = (preds_flat == masks_flat).float().mean(dim=1)
+
+    return dice.mean().item(), iou.mean().item(), acc.mean().item()
 
 # ==================================================
 # Dice Loss 정의
@@ -140,18 +163,40 @@ def main():
         # ============================
         model.eval()
         val_loss_sum = 0.0
+        val_dice_sum = 0.0
+        val_iou_sum  = 0.0
+        val_acc_sum  = 0.0
 
         with torch.no_grad():
             for imgs, masks in val_loader:
                 imgs, masks = imgs.to(device), masks.to(device)
                 logits = model(imgs)
+
+                # 손실
                 loss = combined_loss(logits, masks)
                 val_loss_sum += loss.item() * imgs.size(0)
 
+                # 메트릭
+                d, i, a = compute_metrics(logits, masks, threshold=0.5)
+                val_dice_sum += d * imgs.size(0)
+                val_iou_sum  += i * imgs.size(0)
+                val_acc_sum  += a * imgs.size(0)
+
         val_loss = val_loss_sum / n_val
+        val_dice = val_dice_sum / n_val
+        val_iou  = val_iou_sum  / n_val
+        val_acc  = val_acc_sum  / n_val
+
         scheduler.step()
 
-        print(f"[Epoch {epoch:03d}] Train={train_loss:.4f}  Val={val_loss:.4f}")
+        print(
+            f"[Epoch {epoch:03d}] "
+            f"Train={train_loss:.4f}  "
+            f"Val={val_loss:.4f}  "
+            f"Dice={val_dice:.4f}  "
+            f"IoU={val_iou:.4f}  "
+            f"PixAcc={val_acc:.4f}"
+        )
 
         # ============================
         # Best Model Save
