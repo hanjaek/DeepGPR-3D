@@ -1,36 +1,33 @@
-# visualization/build_cavity_volume.py
-
 import numpy as np
 from pathlib import Path
 from PIL import Image
 
-# -----------------------------
-# 설정
-# -----------------------------
-# 이 스크립트가 어디 있든 상관없이, 프로젝트 루트 기준으로 test/test1을 찾도록 함
+# ================================================================
+# 1) 경로 설정
+#    - 본 스크립트가 있는 위치 기준으로 프로젝트 루트를 찾고,
+#      그 아래 test/test1 폴더의 마스크 이미지들을 자동으로 읽는다.
+# ================================================================
 THIS_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = THIS_DIR.parent
 TEST_DIR = PROJECT_ROOT / "test" / "test1"
 
-# 마스크 이미지 확장자들 (필요하면 추가)
+# 지원하는 이미지 확장자
 IMG_EXTENSIONS = [".png", ".jpg", ".jpeg", ".bmp"]
 
-# 출력 npy 경로
+# 출력 파일 (3D 볼륨)
 OUT_PATH = THIS_DIR / "cavity_volume_test1.npy"
-
-# 슬라이스 간격 (x 방향, 단위: m)
-SLICE_SPACING_X = 0.5  # 50cm
 
 
 def load_mask_slices(test_dir: Path) -> np.ndarray:
     """
-    test/test1 안의 마스크 이미지들을 읽어서
-    (z, y, x) 형태의 3D 볼륨으로 합친다.
-    - z: 이미지의 세로 방향 (깊이)
-    - y: 이미지의 가로 방향 (탐사 라인에 수직)
-    - x: 슬라이스 인덱스 (탐사 진행 방향)
+    마스크 이미지(YZ 슬라이스)들을 읽어 X 방향으로 쌓아
+    하나의 3D 볼륨 (z, y, x) 을 생성한다.
+
+    - 하나의 PNG/JPG 이미지는 YZ 평면이라고 가정한다.
+      (세로: Z축 / 가로: Y축)
+    - 파일명 순서대로 읽어 X축을 구성한다.
     """
-    # test1 안의 이미지 파일들 정렬해서 읽기
+    # test1 안의 이미지들 중 확장자 필터링 후 오름차순 정렬
     img_paths = sorted(
         [p for p in test_dir.iterdir() if p.suffix.lower() in IMG_EXTENSIONS]
     )
@@ -41,28 +38,27 @@ def load_mask_slices(test_dir: Path) -> np.ndarray:
     masks = []
 
     for p in img_paths:
-        img = Image.open(p).convert("L")  # Grayscale
+        img = Image.open(p).convert("L")   # Grayscale (0~255)
         arr = np.array(img, dtype=np.float32)
 
-        # 0/1 마스크로 변환 (필요에 따라 threshold 조절 가능)
-        # 0이 배경(지반), >0 이 공동이라고 가정
-        mask = (arr > 0).astype(np.uint8)  # (H, W) = (z, y)
+        # 흰색(>0)을 공동(1), 검정(0)을 지반(0)으로 처리
+        mask = (arr > 0).astype(np.uint8)  # shape: (z, y)
 
         masks.append(mask)
 
-    # masks: list of (z, y) -> stack along x-axis
+    # 이미지들을 X축 방향으로 stack → 3D 볼륨 생성
     vol = np.stack(masks, axis=-1)  # (z, y, x)
 
-    print(f"[INFO] Loaded {len(img_paths)} slices from {test_dir}")
+    print(f"[INFO] Loaded {len(img_paths)} slices")
     print(f"[INFO] Volume shape (z, y, x): {vol.shape}")
     return vol
 
 
 def main():
+    # 2D → 3D 변환
     vol = load_mask_slices(TEST_DIR)
 
-    # 필요하면 여기서 추후 "probability"나 "distance transform" 등으로 변환 가능
-    # 지금은 0/1 이진 마스크 그대로 저장
+    # Numpy 파일로 3D 볼륨 저장
     np.save(OUT_PATH, vol)
     print(f"[INFO] Saved volume to: {OUT_PATH}")
 
