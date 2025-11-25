@@ -63,3 +63,4 @@ data_mask/
 continuous_data/
 outputs/
 visualization_env/
+*.npy
