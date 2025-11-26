@@ -64,3 +64,5 @@ continuous_data/
 outputs/
 visualization_env/
 *.npy
+comparison/dataset.py
+comparison/model.py
