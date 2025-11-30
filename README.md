@@ -73,7 +73,7 @@ gpr_to_cavity/
 │   └── unet_best.pth               # 현재까지 가장 성능 좋은 U-Net 가중치
 │
 ├── src/
-│   ├── dataset.py                  # data2 / data2_mask용 Dataset 클래스
+│   ├── dataset.py                  # data / data_mask용 Dataset 클래스
 │   ├── model.py                    # Lightweight U-Net 모델 정의
 │   ├── train.py                    # U-Net 학습 스크립트 (BCE+Dice, 증강, Scheduler)
 │   ├── batch_inference.py          # classification_cavity_img 전체에 대해 mask 예측
@@ -88,6 +88,11 @@ gpr_to_cavity/
 │   ├── view_cavity_volume.py       # PyVista 기반 3D cavity 렌더링
 │   ├── view_cavity_slices_spacing.py # slice 간격/보간 실험용 시각화
 │   └── cavity_volume.npy           # 생성된 3D voxel cavity 데이터
+│
+├── slice_interpolation/          # SDT 보간법을 사용하여 이미지 연결
+│   ├── build_cavity_volume.py
+│   ├── sdt_interpolation.py
+│   └── visualize_interp.py 
 │
 ├── outputs/
 │   └── prediction_img/             # batch inference로 생성된 예측 mask 이미지 저장 폴더
