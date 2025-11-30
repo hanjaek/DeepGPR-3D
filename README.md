@@ -80,13 +80,13 @@
   </tr>
   <tr>
     <td align="center">
-      <sub><b>Step 1. 원본 GPR 연속 단면</b></sub>
+      <sub><b>Step 1. 원본 GPR 단면</b></sub>
     </td>
     <td align="center">
-      <sub><b>Step 2. YOLO 기반 cavity 탐지</b></sub>
+      <sub><b>Step 2. cavity 탐지</b></sub>
     </td>
     <td align="center">
-      <sub><b>Step 3. U-Net 기반 cavity 마스크 생성</b></sub>
+      <sub><b>Step 3. GPR cavity 마스크 생성</b></sub>
     </td>
   </tr>
 </table>
@@ -113,13 +113,13 @@
   </tr>
   <tr>
     <td align="center">
-      <sub><b>Step 4. 계측 간격(50cm)으로 배치된 mask 단면</b></sub>
+      <sub><b>Step 4. 계측 간격으로 mask 배치</b></sub>
     </td>
     <td align="center">
-      <sub><b>Step 5. SDT 보간으로 단면 사이 공백 연속화</b></sub>
+      <sub><b>Step 5. SDT 보간으로 공백 연결</b></sub>
     </td>
     <td align="center">
-      <sub><b>Step 6. 보간 volume 기반 최종 3D 공동 복원</b></sub>
+      <sub><b>Step 6. 최종 3D 공동 복원</b></sub>
     </td>
   </tr>
 </table>
