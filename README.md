@@ -45,8 +45,8 @@
 
 4. **2단계 – 픽셀 단위 세그멘테이션 (U-Net)**
    - 학습용 데이터:  
-     - `data2/`: GPR 원본 이미지  
-     - `data2_mask/`: 해당 이미지의 cavity 영역을 채운 GT mask (`*_mask.jpg`)
+     - `data/`: GPR 원본 이미지  
+     - `data_mask/`: 해당 이미지의 cavity 영역을 채운 mask (`*_mask.jpg`)
    - `src/train.py`로 U-Net 학습 (BCE + Dice Loss, 간단한 데이터 증강 포함)
 
 5. **cavity 단면에 대한 일괄 mask 생성**
