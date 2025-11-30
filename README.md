@@ -168,7 +168,7 @@ gpr_to_cavity/
 │   ├── view_cavity_slices_spacing.py # slice 간격/보간 실험용 시각화
 │   └── cavity_volume.npy           # 생성된 3D voxel cavity 데이터
 │
-├── slice_interpolation/          # SDT 보간법을 사용하여 이미지 연결
+├── slice_interpolation/            # SDT 보간법을 사용하여 이미지 연결
 │   ├── build_cavity_volume.py
 │   ├── sdt_interpolation.py
 │   └── visualize_interp.py 
