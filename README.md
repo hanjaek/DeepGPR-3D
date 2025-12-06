@@ -254,13 +254,13 @@ gpr_to_cavity/
 <table>
   <tr>
     <td align="center">
-      <img src="img/1_app_prototype.png" width="220"><br>
+      <img src="img/1_app_prototype.jpg" width="220"><br>
     </td>
     <td align="center">
-      <img src="img/2_app_prototype.png" width="220"><br>
+      <img src="img/2_app_prototype.jpg" width="220"><br>
     </td>
     <td align="center">
-      <img src="img/3_app_prototype.png" width="220"><br>
+      <img src="img/3_app_prototype.jpg" width="220"><br>
     </td>
   </tr>
   <tr>
