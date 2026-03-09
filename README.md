@@ -280,3 +280,4 @@ gpr_to_cavity/
 
 #### → 프로토 타입 링크: https://thinkhole.vercel.app/
 #### → 유튜브 소개 링크: https://www.youtube.com/watch?v=jwESAck5x4I
+#### → 발표자료: PDF(docs/thinkhole_presentation.pdf)
